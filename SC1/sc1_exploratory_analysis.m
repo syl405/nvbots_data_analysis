@@ -98,11 +98,15 @@ sd_col_parallelism = std(col_parallelism,0,2);
 %% Fit regression models
 var_names = {'extrusion_width','slice_thickness','extrusion_multiplier','print_speed','cooling','temperature'};
 % column-level models
-lm_indiv = fitlm([design;design;design;design],reshape(mean_layer_thickness_deviation,[],1),'linear','VarNames',[var_names,'col_level_mean_layer_thickness_deviation']);
+lm_indiv_deviation = fitlm([design;design;design;design],reshape(mean_layer_thickness_deviation,[],1),'linear','VarNames',[var_names,'col_level_mean_layer_thickness_deviation']);
+lm_indiv_abs = fitlm([design;design;design;design],reshape(mean_layer_thickness,[],1),'linear','VarNames',[var_names,'col_level_mean_layer_thickness']);
 
 % part-level models
-lm_part = fitlm(design,mean(mean_layer_thickness_deviation,2),'linear','VarNames',[var_names,'part_level_mean_layer_thickness_deviation']); %layer thickness deviation, part-level mean
-lm_std = fitlm(design,std(mean_layer_thickness_deviation,0,2),'linear','VarNames',[var_names,'stdev_of_layer_thickness_deviation']); %std of layer thickness deviation within parts
+lm_part_deviation = fitlm(design,mean(mean_layer_thickness_deviation,2),'linear','VarNames',[var_names,'part_level_mean_layer_thickness_deviation']); %layer thickness deviation, part-level mean
+lm_std_deviation = fitlm(design,std(mean_layer_thickness_deviation,0,2),'linear','VarNames',[var_names,'stdev_of_layer_thickness_deviation']); %std of layer thickness deviation within parts
+
+lm_part_abs = fitlm(design,mean(mean_layer_thickness,2),'linear','VarNames',[var_names,'part_level_mean_layer_thickness']); %layer thickness deviation, part-level mean
+lm_std_abs = fitlm(design,std(mean_layer_thickness,0,2),'linear','VarNames',[var_names,'stdev_of_layer_thickness']); %std of layer thickness deviation within parts
 
 %% Residual Plots
 % Individual column model
@@ -110,11 +114,11 @@ fh = figure(); %figure handle
 title('Residual Plots - Individual Column Layer Thickness Model'); %overall figure title
 subplot(2,2,1); %subplot handle [TODO: make number of subplots dynamic to number of model forms]
 
-plotResiduals(lm_indiv,'histogram')
+plotResiduals(lm_indiv_deviation,'histogram')
 subplot(2,2,2)
-plotResiduals(lm_indiv,'probability')
+plotResiduals(lm_indiv_deviation,'probability')
 subplot(2,2,3)
-plotResiduals(lm_indiv,'fitted')
+plotResiduals(lm_indiv_deviation,'fitted')
 
 savefig(gcf,'exploratory_analysis/indiv_col_model/residual_analysis/Residual Plots.fig')
 saveas(gcf,'exploratory_analysis/indiv_col_model/residual_analysis/Residual Plots.eps','epsc')
@@ -126,11 +130,11 @@ fh = figure(); %figure handle
 title('Residual Plots - Individual Column Layer Thickness Model'); %overall figure title
 subplot(2,2,1); %subplot handle [TODO: make number of subplots dynamic to number of model forms]
 
-plotResiduals(lm_part,'histogram')
+plotResiduals(lm_part_deviation,'histogram')
 subplot(2,2,2)
-plotResiduals(lm_part,'probability')
+plotResiduals(lm_part_deviation,'probability')
 subplot(2,2,3)
-plotResiduals(lm_part,'fitted')
+plotResiduals(lm_part_deviation,'fitted')
 
 savefig(gcf,'exploratory_analysis/part_mean_model/residual_analysis/Residual Plots.fig')
 saveas(gcf,'exploratory_analysis/part_mean_model/residual_analysis/Residual Plots.eps','epsc')
@@ -142,11 +146,11 @@ fh = figure(); %figure handle
 title('Residual Plots - Individual Column Layer Thickness Model'); %overall figure title
 subplot(2,2,1); %subplot handle [TODO: make number of subplots dynamic to number of model forms]
 
-plotResiduals(lm_std,'histogram')
+plotResiduals(lm_std_deviation,'histogram')
 subplot(2,2,2)
-plotResiduals(lm_std,'probability')
+plotResiduals(lm_std_deviation,'probability')
 subplot(2,2,3)
-plotResiduals(lm_std,'fitted')
+plotResiduals(lm_std_deviation,'fitted')
 
 savefig(gcf,'exploratory_analysis/part_std_model/residual_analysis/Residual Plots.fig')
 saveas(gcf,'exploratory_analysis/part_std_model/residual_analysis/Residual Plots.eps','epsc')
