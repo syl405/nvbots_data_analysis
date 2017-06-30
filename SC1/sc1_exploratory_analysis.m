@@ -156,3 +156,14 @@ savefig(gcf,'exploratory_analysis/part_std_model/residual_analysis/Residual Plot
 saveas(gcf,'exploratory_analysis/part_std_model/residual_analysis/Residual Plots.eps','epsc')
 saveas(gcf,'exploratory_analysis/part_std_model/residual_analysis/Residual Plots.png')
 close(gcf)
+
+%% Plot run chart
+plot([raw_data.col_1_dist raw_data.col_2_dist raw_data.col_3_dist raw_data.col_4_dist]/4,'x')
+axis([0 17 0 0.5])
+xlabel('Print sequence')
+ylabel('Mean Layer Height (mm)')
+legend('Column 1','Column 2','Column 3','Column 4','Location','northwest')
+savefig(gcf,'exploratory_analysis/run_chart.fig')
+saveas(gcf,'exploratory_analysis/run_chart.eps','epsc')
+saveas(gcf,'exploratory_analysis/run_chart.png')
+close(gcf)
