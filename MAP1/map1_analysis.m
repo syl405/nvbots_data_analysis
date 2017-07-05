@@ -1,4 +1,4 @@
-clear
+%clear
 
 %% Import Metrology Data from Measurement 1
 
@@ -235,10 +235,10 @@ close(gcf)
 %calculate measured height errors
 errors = [error metrology_data_ver.Z-design_data.DesignZ metrology_data_ver2.Z-design_data.DesignZ metrology_data_ver3.Z-design_data.DesignZ];
     
-lm_lin = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,1),'interactions', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
-lm_lin_ver = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,2),'interactions', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
-lm_lin_ver2 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,3),'interactions', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
-lm_lin_ver3 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,4),'interactions', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
+lm_lin = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,1),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
+lm_lin_ver = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,2),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
+lm_lin_ver2 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,3),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
+lm_lin_ver3 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,4),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
 
 %% Export model coefficients to csv file for compensation use
 model_coefficients_path = './error_model_coefficients.csv';
@@ -306,7 +306,13 @@ offset_std = std(predicted_offset,0,2);
 %plot absolute range of predicted offsets across work envelope
 colormap('jet')
 scatter3(probe_x,probe_y,probe_z,200,offset_range,'.')
-colorbar()
+axis([0 180 0 200 0 240])
+xlabel('X (mm)')
+ylabel('Y (mm)')
+zlabel('Z (mm)')
+c = colorbar();
+ylabel(c,'Range of Predicted Height Offset (mm)')
+title('Range of Predicted Height Offset Across 4 Measurements')
 savefig(gcf, 'figures/pred_offset_range_work_envelope.fig')
 close(gcf)
 
@@ -327,10 +333,27 @@ arti_offset_range = range(predicted_arti_offset,2);
 
 %express predicted offset range as fraction of actual measured deviation,
 %averaged across measurements
-arti_rel_offset_range = arti_offset_range./mean(errors,2);
+arti_rel_offset_range = arti_offset_range./abs(mean(errors,2));
 
 colormap('jet')
 scatter3(design_data.DesignX,design_data.DesignY,design_data.DesignZ,500,arti_rel_offset_range,'.')
-colorbar()
-savefig(gcf, 'figures/rel_pred_offset_range_measured_pts.fig')
+c=colorbar();
+caxis([0 5])
+savefig(gcf, 'figures/rel_pred_offset_range_measured_pts_mean.fig')
+close(gcf)
+
+%express predicted offset range as fraction of actual measured deviation,
+%in each measurements
+arti_rel_offset_range_indiv = repmat(arti_offset_range,1,4)./abs(errors);
+
+figure
+for i = 1:4
+    subplot(2,2,i)
+    colormap('jet')
+    scatter3(design_data.DesignX,design_data.DesignY,design_data.DesignZ,300,arti_rel_offset_range_indiv(:,i),'.')
+    colorbar()
+    caxis([0 5])
+    title(i)
+end
+savefig(gcf, 'figures/rel_pred_offset_range_measured_pts_indiv.fig')
 close(gcf)

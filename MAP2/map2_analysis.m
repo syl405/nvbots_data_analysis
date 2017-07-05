@@ -1,4 +1,4 @@
-%clear
+clear
 
 % Script for importing data from the following text file:
 %
