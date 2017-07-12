@@ -203,3 +203,33 @@ for i = 2:size(S_comped,1)
     S_comped.Num_Layers_This_Block(i) = (S_comped.Target_Height(i)-S_comped.Target_Height(i-1))/0.3;
 end
 S_comped.Error_Per_Layer_This_Block = S_comped.Error_This_Block./S_comped.Num_Layers_This_Block;
+
+%% Plot errors in bar chart
+comped_mean_length = mean_abs_error_output(:,3);
+uncomped_mean_length = mean_abs_error_output(:,2);
+comped_std_length = std([grouped_data{1,3}';grouped_data{2,3}';grouped_data{3,3}'],0,2);
+uncomped_std_length = std([grouped_data{1,2}';grouped_data{2,2}';grouped_data{3,2}'],0,2);
+comped_n = size([grouped_data{1,3}';grouped_data{2,3}';grouped_data{3,3}'],2);
+uncomped_n = size([grouped_data{1,2}';grouped_data{2,2}';grouped_data{3,2}'],2);
+
+mean_combined = [uncomped_mean_length comped_mean_length];
+std_combined = [uncomped_std_length comped_std_length];
+n_combined = [uncomped_n comped_n];
+
+figure
+hb = bar(1:3,[uncomped_mean_length comped_mean_length]);
+hold on
+drawnow
+xticklabels({30 99.9 240})
+xlabel('Nominal Height (mm)')
+ylabel('Height Error (mm)')
+
+%iterate through bars to find correct x position to place errorbars
+for i = 1:numel(hb)
+    xPos = hb(i).XData + hb(i).XOffset;
+    errorbar(xPos,mean_combined(:,i),2*std_combined(:,i)/sqrt(n_combined(:,i)),'k.')
+end
+legend(hb,{'Uncompensated' 'Compensated'},'Location','southwest')
+savefig(gcf,'figures\compensated_error_bars.fig')
+saveas(gcf,'figures\compensated_error_bars.eps','epsc')
+close(gcf)

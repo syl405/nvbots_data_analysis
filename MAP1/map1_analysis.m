@@ -231,10 +231,20 @@ title('Flatness')
 savefig(gcf, 'figures/flatness_surf_plot.fig')
 close(gcf)
 
+%% Create XYZ Height Table
+x = reshape(design_data.DesignX,9,9);
+y = reshape(design_data.DesignY,9,9);
+z = reshape(design_data.DesignZ,9,9);
+
+input.data = [[NaN; y(1,:)'] [x(:,1)'; z]];
+input.tableBorders = false;
+input.dataFormat = {'%.1f'};
+latexTable(input)
+
 %% Fit XYZ error models
 %calculate measured height errors
 errors = [error metrology_data_ver.Z-design_data.DesignZ metrology_data_ver2.Z-design_data.DesignZ metrology_data_ver3.Z-design_data.DesignZ];
-    
+
 lm_lin = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,1),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
 lm_lin_ver = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,2),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
 lm_lin_ver2 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,3),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
