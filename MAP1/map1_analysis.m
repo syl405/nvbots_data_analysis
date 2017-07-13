@@ -1,4 +1,4 @@
-%clear
+clear
 
 %% Import Metrology Data from Measurement 1
 
@@ -245,7 +245,7 @@ latexTable(input)
 %calculate measured height errors
 errors = [error metrology_data_ver.Z-design_data.DesignZ metrology_data_ver2.Z-design_data.DesignZ metrology_data_ver3.Z-design_data.DesignZ];
 
-lm_lin = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,1),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
+lm_lin = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,1),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',true);
 lm_lin_ver = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,2),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
 lm_lin_ver2 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,3),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
 lm_lin_ver3 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,4),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
@@ -280,7 +280,7 @@ snr_all = sqrt(2*rho_p_all/(1-rho_p_all));
 
 %comparing columns of same nominal height
 heights = unique(design_data.DesignZ);
-grr_data_by_height = nan(9,4,numel(heights));
+grr_data_by_height = nan(9,size(grr_data,2),numel(heights));
 for i = 1:numel(heights)
     grr_data_by_height(:,:,i) = grr_data(design_data.DesignZ==heights(i),:);
 end
