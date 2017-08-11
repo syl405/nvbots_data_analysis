@@ -1,4 +1,4 @@
-clear
+%clear
 
 %% Import Metrology Data from Measurement 1
 
@@ -246,9 +246,9 @@ latexTable(input)
 errors = [error metrology_data_ver.Z-design_data.DesignZ metrology_data_ver2.Z-design_data.DesignZ metrology_data_ver3.Z-design_data.DesignZ];
 
 lm_lin = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,1),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',true);
-lm_lin_ver = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,2),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
-lm_lin_ver2 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,3),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
-lm_lin_ver3 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,4),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',false);
+lm_lin_ver = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,2),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',true);
+lm_lin_ver2 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,3),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',true);
+lm_lin_ver3 = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],errors(:,4),'linear', 'VarNames', {'X','Y','Z','Error'},'Intercept',true);
 
 %% Export model coefficients to csv file for compensation use
 model_coefficients_path = './error_model_coefficients.csv';

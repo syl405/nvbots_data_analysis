@@ -1,8 +1,11 @@
-function [C] = mapfix_analysis()
+clear
+
+%% Define successfully printed columns
+col_index = [1;8;9;10;11;18;19;20;21;29;30;31;39;40;41;49;50;51;59;60;61;69;70;71;79;80;81];
 
 %% Import Metrology Data
 % list directory contents
-csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\error_mapping_artifact\metrology_data\MAP_ST\parsed_csv\';
+csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\3d_compensation_experiment\metrology_data\H1077_R0\parsed_csv\';
 dir_struct = dir(csv_dir_path);
 
 % initialize data structure for imported CMM data
@@ -17,7 +20,7 @@ for i = 1:numel(dir_struct)
     end
     
     filename = [dir_struct(i).folder '\' dir_struct(i).name];
-    run_index = regexp(dir_struct(i).name,'MFC\d?_R(\d+)_parsed.csv','tokenExtents');
+    run_index = regexp(dir_struct(i).name,'MFCOMPED\d?_R(\d+)_parsed.csv','tokenExtents');
     run = str2double(dir_struct(i).name(run_index{1}(1):run_index{1}(2)));
     
     delimiter = ',';
@@ -55,13 +58,13 @@ for i = 1:numel(dir_struct)
     
     % Renumber feature numbers to be in sequence
     metrology_data = sortrows(metrology_data,{'FeatureNumber'},{'ascend'}); %sort by feature number
-    metrology_data.FeatureNumber = (1:84)';
+    metrology_data.FeatureNumber = (1:30)';
     
     % Separate column data coupling error measurements
     coupling_point_data = metrology_data(size(metrology_data,1)-2:end,:); % coupling data (3 planes)
    	coupling_point_data.FeatureNumber = (1:3)'; % renumber kc points 1-3
     
-    metrology_data = metrology_data(1:size(metrology_data,1)-3,:); % column data (81 planes)
+    metrology_data = metrology_data(1:size(metrology_data,1)-3,:); % column data (27 planes)
     
     % Apply nominal offset to reference height against bottom of part
     metrology_data.Z = metrology_data.Z - 1.83;
@@ -88,6 +91,7 @@ design_data.FeatureNumber = (1:81)';
 design_data.DesignX = data(:,3);
 design_data.DesignY = 200 - data(:,4);
 design_data.DesignZ = data(:,5);
+design_data = design_data(col_index,:);
 
 % Apply offset to height data to reference against base of part
 design_data.DesignZ = design_data.DesignZ + 3.9;
@@ -170,68 +174,68 @@ for i = 1:numel(C)
 end
 
 %% Nested Variance Analysis
-% Nesting levels: probe setup > pallet setup > part setup > column number
-
-%reshape data into vector form for MATLAB built-in anovan()
-y = nan(81,numel(C)); %matrix containing all height measurements
-
+% % Nesting levels: probe setup > pallet setup > part setup > column number
+% 
+% %reshape data into vector form for MATLAB built-in anovan()
+ y = nan(27,numel(C)); %matrix containing all height measurements
+% 
 for i = 1:numel(C)
     y(:,i) = C(i).data.error;
 end
-
-y = reshape(y,[],1); %reshape into column vector
-
-%generate grouping vectors
-column = repmat(categorical((1:81)'),numel(C),1);
-probe =[];
-pallet = [];
-part = [];
-date = [];
-
-for i = 1:numel(C)
-    cur_run = C(i).run;
-    cur_probe = exptlog(exptlog.Part == cur_run,:).Probe;
-    probe = [probe; repmat(cur_probe,81,1)];
-    cur_pallet = exptlog(exptlog.Part == cur_run,:).Pallet;
-    pallet = [pallet; repmat(cur_pallet,81,1)];
-    cur_part = categorical(exptlog(exptlog.Part == cur_run,:).Part);
-    part = [part; repmat(cur_part,81,1)];
-    cur_date = exptlog(exptlog.Part == cur_run,:).Date;
-    date = [date; repmat(cur_date,81,1)];
-    clearvars cur_run cur_probe cur_pallet cur_part cur_date
-end
-
-%with measurement date
-% [P,tbl,stats] = anovan(y,{date, probe, pallet, part, column},...
-%                 'nested',[0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0],...
-%                 'random', [1 2 3 4],...
-%                 'varnames',{'Date' 'Probe' 'Pallet' 'Part' 'Column'});
 % 
-% %without measurement date
-% [P,tbl,stats] = anovan(y,{probe, pallet, part, column},...
-%             'nested',[0 0 0 0; 0 0 0 0; 0 1 0 0; 0 0 0 0],...
-%             'random', [1 2 3],...
-%             'varnames',{'Probe' 'Pallet' 'Part' 'Column'});
-            
-%lumping all measurement-related factors
- [P,tbl,stats] = anovan(y,{part, column},...
-                 'random', [1],...
-                 'varnames',{'PartSetup' 'Column'},...
-                 'display',false);
-            
-% calculate percentage variance components
-nested_var_comps = table(stats.rtnames,'VariableNames',{'Source'});
-nested_var_comps.VarComp = stats.varest;
-if ~isempty(nested_var_comps(nested_var_comps.VarComp < 0,:))
-    nested_var_comps(nested_var_comps.VarComp < 0,:).VarComp = 0;
-end
-total_var = sum(nested_var_comps.VarComp);
-nested_var_comps.VarPercentage = 100 * nested_var_comps.VarComp / total_var;
-
-% calculate signal to noise ratio
-rho_part = nested_var_comps.VarPercentage(strcmp(nested_var_comps.Source,'Error'))/100;
-gage_snr = sqrt((2*rho_part)/(1-rho_part));
-
+% y = reshape(y,[],1); %reshape into column vector
+% 
+% %generate grouping vectors
+% column = repmat(categorical((1:27)'),numel(C),1);
+% probe =[];
+% pallet = [];
+% part = [];
+% date = [];
+% 
+% for i = 1:numel(C)
+%     cur_run = C(i).run;
+%     cur_probe = exptlog(exptlog.Part == cur_run,:).Probe;
+%     probe = [probe; repmat(cur_probe,27,1)];
+%     cur_pallet = exptlog(exptlog.Part == cur_run,:).Pallet;
+%     pallet = [pallet; repmat(cur_pallet,27,1)];
+%     cur_part = categorical(exptlog(exptlog.Part == cur_run,:).Part);
+%     part = [part; repmat(cur_part,81,1)];
+%     cur_date = exptlog(exptlog.Part == cur_run,:).Date;
+%     date = [date; repmat(cur_date,81,1)];
+%     clearvars cur_run cur_probe cur_pallet cur_part cur_date
+% end
+% 
+% % with measurement date
+% % [P,tbl,stats] = anovan(y,{date, probe, pallet, part, column},...
+% %                 'nested',[0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0],...
+% %                 'random', [1 2 3 4],...
+% %                 'varnames',{'Date' 'Probe' 'Pallet' 'Part' 'Column'});
+% 
+% % without measurement date
+% %[P,tbl,stats] = anovan(y,{probe, pallet, part, column},...
+% %             'nested',[0 0 0 0; 0 0 0 0; 0 1 0 0; 0 0 0 0],...
+% %             'random', [1 2 3],...
+% %             'varnames',{'Probe' 'Pallet' 'Part' 'Column'});
+%             
+% % lumping all measurement-related factors
+%  [P,tbl,stats] = anovan(y,{part, column},...
+%                  'random', [1],...
+%                  'varnames',{'PartSetup' 'Column'},...
+%                  'display',false);
+%             
+% % calculate percentage variance components
+% nested_var_comps = table(stats.rtnames,'VariableNames',{'Source'});
+% nested_var_comps.VarComp = stats.varest;
+% if ~isempty(nested_var_comps(nested_var_comps.VarComp < 0,:))
+%     nested_var_comps(nested_var_comps.VarComp < 0,:).VarComp = 0;
+% end
+% total_var = sum(nested_var_comps.VarComp);
+% nested_var_comps.VarPercentage = 100 * nested_var_comps.VarComp / total_var;
+% 
+% % calculate signal to noise ratio
+% rho_part = nested_var_comps.VarPercentage(strcmp(nested_var_comps.Source,'Error'))/100;
+% gage_snr = sqrt((2*rho_part)/(1-rho_part));
+% 
 %% Create error, flatness, and parallelism surface plots
 % error = metrology_data.Z - design_data.DesignZ;
 % x = reshape(design_data.DesignX,9,9);
@@ -382,13 +386,13 @@ dlmwrite(model_coefficients_path, model_coefficients, 'delimiter', ',', 'precisi
 
 %% Formal Gauge R&R Study
 %comparing individual columns
-err = nan(81,numel(C)); %matrix containing all height measurements
+err = nan(27,numel(C)); %matrix containing all height measurements
 for i = 1:numel(C)
     err(:,i) = C(i).data.error;
 end
 err = reshape(err,[],1); %reshape into column vector
 
-grr_data = reshape(err,81,[]);
+grr_data = reshape(err,27,[]);
 x_bar = mean(grr_data,2);
 s = std(grr_data,0,2);
 r = range(grr_data,2);
@@ -418,7 +422,7 @@ snr_by_height = (2*rho_p_by_height./(1-rho_p_by_height)).^0.5;
 %============================================
 %generate grid of points across work envelope
 %============================================
-[probe_x,probe_y,probe_z] = meshgrid(0:20:180,0:20:200,0:20:100);
+[probe_x,probe_y,probe_z] = meshgrid(0:20:180,0:20:200,0:20:240);
 
 %reshape into column vectors
 probe_x = reshape(probe_x,[],1);
@@ -468,7 +472,7 @@ arti_offset_range = range(predicted_arti_offset,2);
 
 %express predicted offset range as fraction of actual measured deviation,
 %averaged across measurements
-errors = nan(81,numel(C));
+errors = nan(27,numel(C));
 for i = 1:numel(C)
     errors(:,i) = C(i).data.error;
 end
@@ -501,7 +505,7 @@ close(gcf)
 % Probe averaged model for prediction intervals
 %===============================================
 
-[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','curve','Simultaneous',false);
+[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','observation','Simultaneous',true);
 ci_width = range(ci_pred,2);
 
 %% Inspect prediction interval for future observations of height errors
@@ -509,12 +513,12 @@ ci_width = range(ci_pred,2);
 % Probe averaged model for prediction intervals
 %===============================================
 % using work envelope xyz probe from previous section
-[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','observation','Simultaneous',false);
+[h_pred,ci_pred] = predict(lm_avg,[design_data.DesignX design_data.DesignY design_data.DesignZ],'Prediction','observation','Simultaneous',true);
 
 %==========================================================
 % Check whether existing observations fall in pred interval
 %==========================================================
-%data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
+data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
 
 %===============================================
 % Summary statistics for prediction interval width

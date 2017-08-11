@@ -1,8 +1,8 @@
-function [C] = mapfix_analysis()
-
-%% Import Metrology Data
+%clear
+function [C] = mapcomped_analysis_full()
+%%  Import Metrology Data
 % list directory contents
-csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\error_mapping_artifact\metrology_data\MAP_ST\parsed_csv\';
+csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\3d_compensation_experiment\metrology_data\H1032_R1\parsed_csv\';
 dir_struct = dir(csv_dir_path);
 
 % initialize data structure for imported CMM data
@@ -17,7 +17,7 @@ for i = 1:numel(dir_struct)
     end
     
     filename = [dir_struct(i).folder '\' dir_struct(i).name];
-    run_index = regexp(dir_struct(i).name,'MFC\d?_R(\d+)_parsed.csv','tokenExtents');
+    run_index = regexp(dir_struct(i).name,'MFCOMPED_H\d+_R(\d+)_parsed.csv','tokenExtents');
     run = str2double(dir_struct(i).name(run_index{1}(1):run_index{1}(2)));
     
     delimiter = ',';
@@ -201,19 +201,19 @@ for i = 1:numel(C)
     clearvars cur_run cur_probe cur_pallet cur_part cur_date
 end
 
-%with measurement date
+% with measurement date
 % [P,tbl,stats] = anovan(y,{date, probe, pallet, part, column},...
 %                 'nested',[0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0],...
 %                 'random', [1 2 3 4],...
 %                 'varnames',{'Date' 'Probe' 'Pallet' 'Part' 'Column'});
-% 
-% %without measurement date
-% [P,tbl,stats] = anovan(y,{probe, pallet, part, column},...
+
+% without measurement date
+%[P,tbl,stats] = anovan(y,{probe, pallet, part, column},...
 %             'nested',[0 0 0 0; 0 0 0 0; 0 1 0 0; 0 0 0 0],...
 %             'random', [1 2 3],...
 %             'varnames',{'Probe' 'Pallet' 'Part' 'Column'});
             
-%lumping all measurement-related factors
+% lumping all measurement-related factors
  [P,tbl,stats] = anovan(y,{part, column},...
                  'random', [1],...
                  'varnames',{'PartSetup' 'Column'},...
@@ -509,12 +509,12 @@ ci_width = range(ci_pred,2);
 % Probe averaged model for prediction intervals
 %===============================================
 % using work envelope xyz probe from previous section
-[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','observation','Simultaneous',false);
+[h_pred,ci_pred] = predict(lm_avg,[design_data.DesignX design_data.DesignY design_data.DesignZ],'Prediction','curve','Simultaneous',true);
 
 %==========================================================
 % Check whether existing observations fall in pred interval
 %==========================================================
-%data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
+data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
 
 %===============================================
 % Summary statistics for prediction interval width

@@ -1,8 +1,8 @@
-function [C] = mapfix_analysis()
+%clear
 
 %% Import Metrology Data
 % list directory contents
-csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\error_mapping_artifact\metrology_data\MAP_ST\parsed_csv\';
+csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\error_mapping_artifact\metrology_data\MAPFIXCORR_QC2\parsed_csv\';
 dir_struct = dir(csv_dir_path);
 
 % initialize data structure for imported CMM data
@@ -17,7 +17,7 @@ for i = 1:numel(dir_struct)
     end
     
     filename = [dir_struct(i).folder '\' dir_struct(i).name];
-    run_index = regexp(dir_struct(i).name,'MFC\d?_R(\d+)_parsed.csv','tokenExtents');
+    run_index = regexp(dir_struct(i).name,'MAPFIXCORR_QC\d_R(\d+)_parsed.csv','tokenExtents');
     run = str2double(dir_struct(i).name(run_index{1}(1):run_index{1}(2)));
     
     delimiter = ',';
@@ -201,19 +201,19 @@ for i = 1:numel(C)
     clearvars cur_run cur_probe cur_pallet cur_part cur_date
 end
 
-%with measurement date
+% with measurement date
 % [P,tbl,stats] = anovan(y,{date, probe, pallet, part, column},...
 %                 'nested',[0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0],...
 %                 'random', [1 2 3 4],...
 %                 'varnames',{'Date' 'Probe' 'Pallet' 'Part' 'Column'});
-% 
-% %without measurement date
-% [P,tbl,stats] = anovan(y,{probe, pallet, part, column},...
+
+% without measurement date
+%[P,tbl,stats] = anovan(y,{probe, pallet, part, column},...
 %             'nested',[0 0 0 0; 0 0 0 0; 0 1 0 0; 0 0 0 0],...
 %             'random', [1 2 3],...
 %             'varnames',{'Probe' 'Pallet' 'Part' 'Column'});
             
-%lumping all measurement-related factors
+% lumping all measurement-related factors
  [P,tbl,stats] = anovan(y,{part, column},...
                  'random', [1],...
                  'varnames',{'PartSetup' 'Column'},...
@@ -305,7 +305,9 @@ for i = 1:size(lm_avg.Coefficients,1)
         end
     end
 end
-lm_avg = removeTerms(lm_avg,insig_terms); 
+if ~isempty(insig_terms)
+    lm_avg = removeTerms(lm_avg,insig_terms); 
+end
 
 %% Plot predicted height offsets using aggregate model ("true error independent of measurement error")
 [probe_x,probe_y,probe_z] = meshgrid(0:20:180,0:20:200,0:20:100);
@@ -359,14 +361,14 @@ close(gcf)
 
 %% Export model coefficients to csv file for compensation use
 model_coefficients_path = './error_model_coefficients.csv';
-predictor_names = {'(Intercept)','X','Y','Z','X^2','X:Y','Y^2','X:Z','Y:Z','Z^2','X^3','X^2:Y','X:Y^2','Y^3','X^2:Z','X:Y:Z','Y^2:Z','X:Z^2','Y:Z^2','Z^3'};
-model_coefficients = zeros(numel(predictor_names),1); %initialize coefficient vector
-for i = 1:numel(predictor_names)
+predictor_names = {'(Intercept)','X','Y','Z'};
+model_coefficients = zeros(3,1); %by default model is XYZ dependent
+for i = 1:numel(predictor_names) %do not include constant offset term
     if lm_avg.Coefficients.Estimate(find(strcmp(lm_avg.CoefficientNames,predictor_names{i})))
         model_coefficients(i) = lm_avg.Coefficients.Estimate(find(strcmp(lm_avg.CoefficientNames,predictor_names{i})));
     end
 end
-dlmwrite(model_coefficients_path, model_coefficients, 'delimiter', ',', 'precision', 12); 
+csvwrite(model_coefficients_path, model_coefficients)
 
 %% Analyze measurement uncertainty
 %repeat_error = metrology_data.Z - metrology_data_ver.Z;
@@ -497,24 +499,18 @@ for i = 1:numel(C)
 end
 savefig(gcf, 'figures/rel_pred_offset_range_measured_pts_indiv.fig')
 close(gcf)
-%===============================================
-% Probe averaged model for prediction intervals
-%===============================================
-
-[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','curve','Simultaneous',false);
-ci_width = range(ci_pred,2);
 
 %% Inspect prediction interval for future observations of height errors
 %===============================================
 % Probe averaged model for prediction intervals
 %===============================================
 % using work envelope xyz probe from previous section
-[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','observation','Simultaneous',false);
+[h_pred,ci_pred] = predict(lm_avg,[design_data.DesignX design_data.DesignY design_data.DesignZ],'Prediction','observation','Simultaneous',true);
 
 %==========================================================
 % Check whether existing observations fall in pred interval
 %==========================================================
-%data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
+data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
 
 %===============================================
 % Summary statistics for prediction interval width
@@ -526,28 +522,3 @@ pred_int.median_width = median(pred_int.widths);
 pred_int.min_width = min(pred_int.widths);
 pred_int.max_width = max(pred_int.widths);
 
-%% Create morphed pointcloud for illustration
-[pc_x,pc_y,pc_z] = meshgrid(0:45:180,0:50:200,0:25:100);
-
-%reshape into column vectors
-pc_x_linear = reshape(pc_x,[],1);
-pc_y_linear = reshape(pc_y,[],1);
-pc_z_linear = reshape(pc_z,[],1);
-pc_xyz = [pc_x_linear,pc_y_linear,pc_z_linear]; %nx3 matrix
-
-predicted_offset_pc = predict(lm_avg,pc_xyz);
-
-%apply compensation
-pc_z_comped = pc_z_linear - predicted_offset_pc*10;
-
-%plot pointcloud
-figure
-hold on
-hs1 = scatter3(pc_x_linear,pc_y_linear,pc_z_linear,300,'r.');
-hs2 = scatter3(pc_x_linear,pc_y_linear,pc_z_comped,300,'g.');
-axis([0 180 0 200 0 120])
-xlabel('X (mm)')
-ylabel('Y (mm)')
-zlabel('Z (mm)')
-title('Predicted Height Offset From Repeated Measurements')
-close(gcf)

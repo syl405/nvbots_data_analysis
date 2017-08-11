@@ -1,12 +1,12 @@
-function [C] = mapfix_analysis()
+clear
 
 %% Import Metrology Data
 % list directory contents
-csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\error_mapping_artifact\metrology_data\MAP_ST\parsed_csv\';
+csv_dir_path = 'D:\Dropbox (MIT)\Spring 2017\NVBOTS Dropbox\Summer\error_mapping_artifact\metrology_data\MAPFIX1\parsed_csv\';
 dir_struct = dir(csv_dir_path);
 
 % initialize data structure for imported CMM data
-C = struct('data',{},'run',{}, 'coupling_pts', {});
+C = struct('data',{},'run',{});
 
 % iterate through directory list to import data
 for i = 1:numel(dir_struct)
@@ -17,7 +17,7 @@ for i = 1:numel(dir_struct)
     end
     
     filename = [dir_struct(i).folder '\' dir_struct(i).name];
-    run_index = regexp(dir_struct(i).name,'MFC\d?_R(\d+)_parsed.csv','tokenExtents');
+    run_index = regexp(dir_struct(i).name,'MFF_R(\d+)_parsed.csv','tokenExtents');
     run = str2double(dir_struct(i).name(run_index{1}(1):run_index{1}(2)));
     
     delimiter = ',';
@@ -55,13 +55,13 @@ for i = 1:numel(dir_struct)
     
     % Renumber feature numbers to be in sequence
     metrology_data = sortrows(metrology_data,{'FeatureNumber'},{'ascend'}); %sort by feature number
-    metrology_data.FeatureNumber = (1:84)';
+    metrology_data.FeatureNumber = (1:81)';
     
     % Separate column data coupling error measurements
-    coupling_point_data = metrology_data(size(metrology_data,1)-2:end,:); % coupling data (3 planes)
-   	coupling_point_data.FeatureNumber = (1:3)'; % renumber kc points 1-3
-    
-    metrology_data = metrology_data(1:size(metrology_data,1)-3,:); % column data (81 planes)
+%     coupling_point_data = metrology_data(size(metrology_data,1)-2:end,:); % coupling data (3 planes)
+%    	coupling_point_data.FeatureNumber = (1:3)'; % renumber kc points 1-3
+%     
+%     metrology_data = metrology_data(1:size(metrology_data,1)-3,:); % column data (81 planes)
     
     % Apply nominal offset to reference height against bottom of part
     metrology_data.Z = metrology_data.Z - 1.83;
@@ -70,7 +70,7 @@ for i = 1:numel(dir_struct)
     clearvars filename delimiter startRow formatSpec fileID dataArray ans;
     
     % Create new entry in C with newly imported measurements
-    C = [C; struct('data', metrology_data, 'coupling_pts', coupling_point_data, 'run', run)];
+    C = [C; struct('data', metrology_data, 'run', run)];
 end
 
 %% Import Part Design Data
@@ -157,16 +157,16 @@ for i = 1:numel(C)
     C(i).data.error = C(i).data.Z - design_data.DesignZ;
     
     % calculate local base error at each contact point
-    C(i).coupling_pts.error = C(i).coupling_pts.Z - 5.73; %nominal dist between center of balls and top surface of base
+%     C(i).coupling_pts.error = C(i).coupling_pts.Z - 5.73; %nominal dist between center of balls and top surface of base
     
     % fit plane to coupling error
-    C(i).coupling_lm = fitlm([90 15; 16.3878 142.5; 163.6121 142.5], C(i).coupling_pts.error, 'linear');
+%     C(i).coupling_lm = fitlm([90 15; 16.3878 142.5; 163.6121 142.5], C(i).coupling_pts.error, 'linear');
     
     % predict coupling error
-    C(i).predicted_coupling_error = predict(C(i).coupling_lm, [design_data.DesignX design_data.DesignY]);
+%     C(i).predicted_coupling_error = predict(C(i).coupling_lm, [design_data.DesignX design_data.DesignY]);
     
     % subtract predicted coupling error from measured height error (wrt center of balls)
-    C(i).data.error  = C(i).data.error - C(i).predicted_coupling_error;
+%     C(i).data.error  = C(i).data.error - C(i).predicted_coupling_error;
 end
 
 %% Nested Variance Analysis
@@ -201,30 +201,30 @@ for i = 1:numel(C)
     clearvars cur_run cur_probe cur_pallet cur_part cur_date
 end
 
-%with measurement date
+% with measurement date
 % [P,tbl,stats] = anovan(y,{date, probe, pallet, part, column},...
 %                 'nested',[0 0 0 0 0; 1 0 0 0 0; 0 1 0 0 0; 0 0 1 0 0; 0 0 0 0 0],...
 %                 'random', [1 2 3 4],...
 %                 'varnames',{'Date' 'Probe' 'Pallet' 'Part' 'Column'});
-% 
-% %without measurement date
-% [P,tbl,stats] = anovan(y,{probe, pallet, part, column},...
-%             'nested',[0 0 0 0; 0 0 0 0; 0 1 0 0; 0 0 0 0],...
-%             'random', [1 2 3],...
-%             'varnames',{'Probe' 'Pallet' 'Part' 'Column'});
+
+% without measurement date
+[P,tbl,stats] = anovan(y,{pallet, part, column},...
+            'nested',[0 0 0 ; 1 0 0; 0 0 0],...
+            'random', [1 2],...
+            'varnames',{'Pallet' 'Part' 'Column'});
             
-%lumping all measurement-related factors
- [P,tbl,stats] = anovan(y,{part, column},...
-                 'random', [1],...
-                 'varnames',{'PartSetup' 'Column'},...
-                 'display',false);
+% lumping all measurement-related factors
+%  [P,tbl,stats] = anovan(y,{part, column},...
+%                  'random', [1],...17
+%                  'varnames',{'PartSetup' 'Column'},...
+%                  'display',false);
             
 % calculate percentage variance components
 nested_var_comps = table(stats.rtnames,'VariableNames',{'Source'});
 nested_var_comps.VarComp = stats.varest;
-if ~isempty(nested_var_comps(nested_var_comps.VarComp < 0,:))
-    nested_var_comps(nested_var_comps.VarComp < 0,:).VarComp = 0;
-end
+% if ~isempty(nested_var_comps(nested_var_comps.VarComp < 0,:))
+%     nested_var_comps(nested_var_comps.VarComp < 0,:).VarComp = zeros(numel(nested_var_comps(nested_var_comps.VarComp < 0,:)),1);
+% end
 total_var = sum(nested_var_comps.VarComp);
 nested_var_comps.VarPercentage = 100 * nested_var_comps.VarComp / total_var;
 
@@ -279,7 +279,22 @@ gage_snr = sqrt((2*rho_part)/(1-rho_part));
 %% Fit XYZ error models
 % fit model for each measurement (for iatrogenics analysis)
 for i = 1:numel(C)
-    C(i).error_lm = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],C(i).data.error, 'linear', 'VarNames', {'X','Y','Z','HeightError'});
+    C(i).error_lm = fitlm([design_data.DesignX design_data.DesignY design_data.DesignZ],C(i).data.error, 'poly333', 'VarNames', {'X','Y','Z','HeightError'});
+    insig_terms = '';
+    for j = 1:size(C(i).error_lm.Coefficients,1)
+        if C(i).error_lm.Coefficients.pValue(j) > 0.001 % current term insignificant
+            if isempty(insig_terms)
+                if strcmp(C(i).error_lm.CoefficientNames{j},'(Intercept)')
+                    insig_terms = '1';
+                else
+                    insig_terms = C(i).error_lm.CoefficientNames{j};
+                end
+            else
+                insig_terms = [insig_terms ' + ' C(i).error_lm.CoefficientNames{j}];
+            end
+        end
+    end
+    C(i).error_lm = removeTerms(C(i).error_lm,insig_terms);
 end
 
 % fit model using repeated measurements as replicates ("Error" componenent refers to measurement error + inherent randomness.
@@ -437,14 +452,14 @@ offset_std = std(predicted_offset,0,2);
 
 %plot absolute range of predicted offsets across work envelope
 colormap('jet')
-scatter3(probe_x,probe_y,probe_z,200,offset_range,'.')
-axis([0 180 0 200 0 240])
+scatter3(probe_x,probe_y,probe_z,200,offset_std,'.')
+axis([0 180 0 200 0 100])
 xlabel('X (mm)')
 ylabel('Y (mm)')
 zlabel('Z (mm)')
 c = colorbar();
 ylabel(c,'Range of Predicted Height Offset (mm)')
-title(['Range of Predicted Height Offset Across' num2str(numel(C)) ' Measurements'])
+title(['Range of Predicted Height Offset Across ' num2str(numel(C)) ' Measurements'])
 savefig(gcf, 'figures/pred_offset_range_work_envelope.fig')
 close(gcf)
 
@@ -501,7 +516,7 @@ close(gcf)
 % Probe averaged model for prediction intervals
 %===============================================
 
-[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','curve','Simultaneous',false);
+[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','observation','Simultaneous',true);
 ci_width = range(ci_pred,2);
 
 %% Inspect prediction interval for future observations of height errors
@@ -509,12 +524,12 @@ ci_width = range(ci_pred,2);
 % Probe averaged model for prediction intervals
 %===============================================
 % using work envelope xyz probe from previous section
-[h_pred,ci_pred] = predict(lm_avg,probe_xyz,'Prediction','observation','Simultaneous',false);
+[h_pred,ci_pred] = predict(lm_avg,[design_data.DesignX design_data.DesignY design_data.DesignZ],'Prediction','observation','Simultaneous',true);
 
 %==========================================================
 % Check whether existing observations fall in pred interval
 %==========================================================
-%data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
+data_in_int = and((lm_avg.Variables.HeightError > ci_pred(:,1)),(lm_avg.Variables.HeightError < ci_pred(:,2)));
 
 %===============================================
 % Summary statistics for prediction interval width
@@ -525,29 +540,3 @@ pred_int.mean_width = mean(pred_int.widths);
 pred_int.median_width = median(pred_int.widths);
 pred_int.min_width = min(pred_int.widths);
 pred_int.max_width = max(pred_int.widths);
-
-%% Create morphed pointcloud for illustration
-[pc_x,pc_y,pc_z] = meshgrid(0:45:180,0:50:200,0:25:100);
-
-%reshape into column vectors
-pc_x_linear = reshape(pc_x,[],1);
-pc_y_linear = reshape(pc_y,[],1);
-pc_z_linear = reshape(pc_z,[],1);
-pc_xyz = [pc_x_linear,pc_y_linear,pc_z_linear]; %nx3 matrix
-
-predicted_offset_pc = predict(lm_avg,pc_xyz);
-
-%apply compensation
-pc_z_comped = pc_z_linear - predicted_offset_pc*10;
-
-%plot pointcloud
-figure
-hold on
-hs1 = scatter3(pc_x_linear,pc_y_linear,pc_z_linear,300,'r.');
-hs2 = scatter3(pc_x_linear,pc_y_linear,pc_z_comped,300,'g.');
-axis([0 180 0 200 0 120])
-xlabel('X (mm)')
-ylabel('Y (mm)')
-zlabel('Z (mm)')
-title('Predicted Height Offset From Repeated Measurements')
-close(gcf)
